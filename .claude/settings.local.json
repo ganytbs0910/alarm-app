@@ -14,7 +14,9 @@
       "Bash(npm install:*)",
       "Bash(xcrun xctrace:*)",
       "Bash(ipconfig:*)",
-      "Bash(ipconfig getifaddr:*)"
+      "Bash(ipconfig getifaddr:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote set-url:*)"
     ]
   }
 }
