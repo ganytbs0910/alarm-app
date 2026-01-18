@@ -6,7 +6,15 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx expo start:*)",
+      "Bash(npx expo prebuild:*)",
+      "Bash(npx expo run:ios:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm install:*)",
+      "Bash(xcrun xctrace:*)",
+      "Bash(ipconfig:*)",
+      "Bash(ipconfig getifaddr:*)"
     ]
   }
 }
