@@ -40,7 +40,7 @@ import {
   scheduleSnoozeAlarm,
   dismissAllNotifications,
 } from './src/utils/notifications';
-import { getWeatherData, needsUmbrella } from './src/utils/weather';
+import { getWeatherData, getWeatherStatus } from './src/utils/weather';
 
 const TABS = [
   { key: ALARM_TYPES.DAILY, label: '毎日' },
@@ -79,7 +79,7 @@ export default function App() {
   const [volume, setVolume] = useState(1.0);
   const [selectedSound, setSelectedSound] = useState('default');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [umbrella, setUmbrella] = useState(null); // true: 必要, false: 不要, null: 取得中
+  const [weather, setWeather] = useState(null); // 'rain', 'cloudy', 'sunny', null: 取得中
 
   useEffect(() => {
     loadAlarms();
@@ -196,7 +196,7 @@ export default function App() {
 
   const fetchWeather = async () => {
     const data = await getWeatherData();
-    setUmbrella(needsUmbrella(data));
+    setWeather(getWeatherStatus(data));
   };
 
   const filteredAlarms = alarms.filter((a) => a.type === activeTab);
@@ -589,12 +589,14 @@ export default function App() {
         <SafeAreaView style={styles.container}>
           <StatusBar style="light" />
         <TouchableOpacity
-          style={[styles.umbrellaContainer, umbrella && styles.umbrellaNeeded]}
+          style={[styles.umbrellaContainer, weather === 'rain' && styles.umbrellaRain, weather === 'cloudy' && styles.umbrellaCloudy]}
           onPress={fetchWeather}
         >
-          <Text style={styles.umbrellaIcon}>{umbrella === null ? '...' : umbrella ? '☔' : '☀️'}</Text>
+          <Text style={styles.umbrellaIcon}>
+            {weather === null ? '...' : weather === 'rain' ? '☔️' : weather === 'cloudy' ? '☁️' : '☀️'}
+          </Text>
           <Text style={styles.umbrellaText}>
-            {umbrella === null ? '取得中' : umbrella ? '傘を持っていこう' : '傘は不要'}
+            {weather === null ? '取得中' : weather === 'rain' ? '傘を持っていこう' : weather === 'cloudy' ? '傘があると安心' : '傘は不要'}
           </Text>
         </TouchableOpacity>
 
@@ -710,8 +712,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 16,
   },
-  umbrellaNeeded: {
-    backgroundColor: '#3a2a00',
+  umbrellaRain: {
+    backgroundColor: '#1a3a5c',
+  },
+  umbrellaCloudy: {
+    backgroundColor: '#2a2a30',
   },
   umbrellaIcon: {
     fontSize: 32,

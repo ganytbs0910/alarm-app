@@ -60,8 +60,11 @@ export const getWeatherData = async () => {
   }
 };
 
-// 傘が必要かどうかを判定
-export const needsUmbrella = (data) => {
+// 天気状態を判定（rain, cloudy, sunny）
+export const getWeatherStatus = (data) => {
   if (!data) return null;
-  return data.probability >= 30;
+  const p = data.probability;
+  if (p >= 70) return 'rain';
+  if (p >= 30) return 'cloudy';
+  return 'sunny';
 };
