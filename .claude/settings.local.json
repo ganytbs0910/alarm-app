@@ -16,7 +16,13 @@
       "Bash(ipconfig:*)",
       "Bash(ipconfig getifaddr:*)",
       "Bash(gh repo create:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(open:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(kill:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

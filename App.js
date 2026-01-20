@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,8 +10,13 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  AppState,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import { StatusBar } from 'expo-status-bar';
@@ -30,7 +35,12 @@ import {
   cancelAlarm,
   speakText,
   addNotificationListener,
+  addNotificationResponseListener,
+  setupNotificationCategories,
+  scheduleSnoozeAlarm,
+  dismissAllNotifications,
 } from './src/utils/notifications';
+import { getWeatherData, getUmbrellaMessage } from './src/utils/weather';
 
 const TABS = [
   { key: ALARM_TYPES.DAILY, label: '毎日' },
@@ -47,6 +57,16 @@ const QUICK_TIME_OPTIONS = [
   { label: '3時間', seconds: 10800 },
 ];
 
+const SOUND_OPTIONS = [
+  { id: 'default', label: 'デフォルト' },
+  { id: 'random', label: 'ランダム' },
+  { id: 'alarm', label: 'アラーム' },
+  { id: 'bell', label: 'ベル' },
+  { id: 'chime', label: 'チャイム' },
+  { id: 'digital', label: 'デジタル' },
+  { id: 'gentle', label: 'やさしい' },
+];
+
 export default function App() {
   const [alarms, setAlarms] = useState([]);
   const [activeTab, setActiveTab] = useState(ALARM_TYPES.DAILY);
@@ -57,24 +77,127 @@ export default function App() {
   const [quickSeconds, setQuickSeconds] = useState(0);
   const [editingAlarm, setEditingAlarm] = useState(null);
   const [volume, setVolume] = useState(1.0);
+  const [selectedSound, setSelectedSound] = useState('default');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [umbrellaInfo, setUmbrellaInfo] = useState({ message: '天気を取得中...', icon: '...' });
 
   useEffect(() => {
     loadAlarms();
     requestPermissions();
+    setupNotificationCategories();
+    fetchWeather();
 
-    const subscription = addNotificationListener((notification) => {
+    // 通知受信時の処理
+    const notificationSubscription = addNotificationListener((notification) => {
       const data = notification.request.content.data;
       if (data?.speakText && data?.reason) {
         speakText(data.reason);
       }
     });
 
+    // 通知ボタン押下時の処理
+    const responseSubscription = addNotificationResponseListener((response) => {
+      const actionId = response.actionIdentifier;
+      const data = response.notification.request.content.data;
+
+      if (actionId === 'stop') {
+        // 停止ボタン - 何もしない（通知は自動で消える）
+        console.log('Alarm stopped');
+      } else if (actionId === 'snooze') {
+        // スヌーズボタン - 5分後に再通知
+        scheduleSnoozeAlarm(data);
+        console.log('Snooze scheduled for 5 minutes');
+      }
+    });
+
+    return () => {
+      notificationSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, []);
+
+  // 今すぐアラームがあれば1秒ごと、なければ1分ごとに更新
+  useEffect(() => {
+    const hasQuickAlarm = alarms.some(
+      (a) => a.type === ALARM_TYPES.QUICK && a.enabled
+    );
+    const interval = hasQuickAlarm ? 1000 : 60000;
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, interval);
+    return () => clearInterval(timer);
+  }, [alarms]);
+
+  // アプリがフォアグラウンドに来たら通知を消す
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        dismissAllNotifications();
+      }
+    });
+
     return () => subscription.remove();
   }, []);
+
+  const getRemainingTime = (alarm, includePrefix = true) => {
+    if (!alarm.enabled) return null;
+
+    const now = currentTime;
+    let targetTime = new Date();
+
+    if (alarm.type === ALARM_TYPES.QUICK) {
+      if (!alarm.triggerTime) return null;
+      targetTime = new Date(alarm.triggerTime);
+    } else {
+      targetTime.setHours(alarm.hour, alarm.minute, 0, 0);
+      if (targetTime <= now) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+    }
+
+    const diffMs = targetTime - now;
+    if (diffMs <= 0) return null;
+
+    const prefix = includePrefix ? 'あと' : '';
+
+    // 今すぐアラームは秒単位で表示
+    if (alarm.type === ALARM_TYPES.QUICK) {
+      const totalSecs = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSecs / 3600);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = totalSecs % 60;
+
+      if (hours > 0) {
+        return `${prefix}${hours}時間${mins}分${secs}秒`;
+      } else if (mins > 0) {
+        return `${prefix}${mins}分${secs}秒`;
+      } else {
+        return `${prefix}${secs}秒`;
+      }
+    }
+
+    // 毎日・起きるまでアラームは分単位
+    const diffMins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+
+    if (hours > 0) {
+      return `${prefix}${hours}時間${mins}分`;
+    } else {
+      return `${prefix}${mins}分`;
+    }
+  };
 
   const loadAlarms = async () => {
     const savedAlarms = await getAlarms();
     setAlarms(savedAlarms);
+  };
+
+  const fetchWeather = async () => {
+    const weatherData = await getWeatherData();
+    const info = getUmbrellaMessage(weatherData);
+    setUmbrellaInfo(info);
   };
 
   const filteredAlarms = alarms.filter((a) => a.type === activeTab);
@@ -86,6 +209,7 @@ export default function App() {
     setWakeupReason('');
     setQuickSeconds(0);
     setVolume(1.0);
+    setSelectedSound('default');
     setModalVisible(true);
   };
 
@@ -100,6 +224,7 @@ export default function App() {
     setWakeupReason(alarm.reason || '');
     setQuickSeconds(alarm.seconds || 0);
     setVolume(alarm.volume ?? 1.0);
+    setSelectedSound(alarm.sound || 'default');
     setModalVisible(true);
   };
 
@@ -114,6 +239,9 @@ export default function App() {
       return;
     }
 
+    // モーダルを先に閉じる
+    setModalVisible(false);
+
     const hour = selectedTime.getHours();
     const minute = selectedTime.getMinutes();
 
@@ -127,6 +255,7 @@ export default function App() {
           minute,
           label: alarmLabel,
           volume,
+          sound: selectedSound,
         };
         break;
       case ALARM_TYPES.QUICK:
@@ -136,6 +265,7 @@ export default function App() {
           label: alarmLabel || formatQuickTime(quickSeconds),
           triggerTime: new Date(Date.now() + quickSeconds * 1000).toISOString(),
           volume,
+          sound: selectedSound,
         };
         break;
       case ALARM_TYPES.WAKEUP:
@@ -146,25 +276,29 @@ export default function App() {
           reason: wakeupReason,
           label: wakeupReason,
           volume,
+          sound: selectedSound,
         };
         break;
     }
 
-    if (editingAlarm) {
-      await cancelAlarm(editingAlarm.id);
-      const updatedAlarms = await updateAlarm(editingAlarm.id, alarmData);
-      setAlarms(updatedAlarms);
-      const updatedAlarm = updatedAlarms.find((a) => a.id === editingAlarm.id);
-      if (updatedAlarm?.enabled) {
-        await scheduleAlarmByType(updatedAlarm);
+    try {
+      if (editingAlarm) {
+        await cancelAlarm(editingAlarm.id);
+        const updatedAlarms = await updateAlarm(editingAlarm.id, alarmData);
+        setAlarms(updatedAlarms);
+        const updatedAlarm = updatedAlarms.find((a) => a.id === editingAlarm.id);
+        if (updatedAlarm?.enabled) {
+          await scheduleAlarmByType(updatedAlarm);
+        }
+      } else {
+        const newAlarm = await addAlarm(alarmData);
+        setAlarms((prev) => [...prev, newAlarm]);
+        await scheduleAlarmByType(newAlarm);
       }
-    } else {
-      const newAlarm = await addAlarm(alarmData);
-      setAlarms((prev) => [...prev, newAlarm]);
-      await scheduleAlarmByType(newAlarm);
+    } catch (error) {
+      console.error('Alarm save error:', error);
+      Alert.alert('エラー', 'アラームの保存に失敗しました: ' + error.message);
     }
-
-    setModalVisible(false);
   };
 
   const scheduleAlarmByType = async (alarm) => {
@@ -183,7 +317,14 @@ export default function App() {
 
   const handleToggleAlarm = async (alarm) => {
     const newEnabled = !alarm.enabled;
-    const updatedAlarms = await updateAlarm(alarm.id, { enabled: newEnabled });
+
+    // 今すぐアラームをオンにする場合はtriggerTimeを更新
+    let updates = { enabled: newEnabled };
+    if (newEnabled && alarm.type === ALARM_TYPES.QUICK) {
+      updates.triggerTime = new Date(Date.now() + alarm.seconds * 1000).toISOString();
+    }
+
+    const updatedAlarms = await updateAlarm(alarm.id, updates);
     setAlarms(updatedAlarms);
 
     if (newEnabled) {
@@ -236,39 +377,83 @@ export default function App() {
     setQuickSeconds(0);
   };
 
-  const renderAlarm = ({ item }) => (
-    <TouchableOpacity
-      style={styles.alarmItem}
-      onPress={() => handleEditAlarm(item)}
-      onLongPress={() => handleDeleteAlarm(item)}
-    >
-      <View style={styles.alarmInfo}>
-        {item.type === ALARM_TYPES.QUICK ? (
-          <Text style={[styles.alarmTime, !item.enabled && styles.disabledText]}>
-            {formatQuickTime(item.seconds)}
-          </Text>
-        ) : (
-          <Text style={[styles.alarmTime, !item.enabled && styles.disabledText]}>
-            {formatTime(item.hour, item.minute)}
-          </Text>
-        )}
-        {item.label ? (
-          <Text style={[styles.alarmLabel, !item.enabled && styles.disabledText]}>
-            {item.label}
-          </Text>
-        ) : null}
-        {item.type === ALARM_TYPES.WAKEUP && (
-          <Text style={[styles.alarmTypeTag, styles.wakeupTag]}>音声読み上げ</Text>
-        )}
-      </View>
-      <Switch
-        value={item.enabled}
-        onValueChange={() => handleToggleAlarm(item)}
-        trackColor={{ false: '#767577', true: '#81b0ff' }}
-        thumbColor={item.enabled ? '#007AFF' : '#f4f3f4'}
-      />
-    </TouchableOpacity>
-  );
+  const handleDeleteAlarmDirect = async (alarm) => {
+    await cancelAlarm(alarm.id);
+    const updatedAlarms = await deleteAlarm(alarm.id);
+    setAlarms(updatedAlarms);
+  };
+
+  const renderRightActions = (progress, dragX, item) => {
+    return (
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteAlarmDirect(item)}
+      >
+        <Text style={styles.deleteButtonText}>削除</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderAlarm = ({ item }) => {
+    const remainingTime = getRemainingTime(item);
+    const remainingTimeNoPrefix = getRemainingTime(item, false);
+
+    return (
+      <Swipeable
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+        overshootRight={false}
+      >
+        <TouchableOpacity
+          style={styles.alarmItem}
+          onPress={() => handleEditAlarm(item)}
+        >
+          <View style={styles.alarmInfo}>
+            {item.type === ALARM_TYPES.QUICK ? (
+              <>
+                {item.enabled && remainingTimeNoPrefix ? (
+                  <Text style={styles.quickRemainingTime}>
+                    {remainingTimeNoPrefix}
+                  </Text>
+                ) : (
+                  <Text style={[styles.alarmTime, !item.enabled && styles.disabledText]}>
+                    {formatQuickTime(item.seconds)}
+                  </Text>
+                )}
+                {item.enabled && remainingTimeNoPrefix && (
+                  <Text style={styles.alarmLabel}>
+                    設定: {formatQuickTime(item.seconds)}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                <Text style={[styles.alarmTime, !item.enabled && styles.disabledText]}>
+                  {formatTime(item.hour, item.minute)}
+                </Text>
+                {remainingTime && (
+                  <Text style={styles.remainingTime}>{remainingTime}</Text>
+                )}
+              </>
+            )}
+            {item.label && item.type !== ALARM_TYPES.QUICK ? (
+              <Text style={[styles.alarmLabel, !item.enabled && styles.disabledText]}>
+                {item.label}
+              </Text>
+            ) : null}
+            {item.type === ALARM_TYPES.WAKEUP && (
+              <Text style={[styles.alarmTypeTag, styles.wakeupTag]}>音声読み上げ</Text>
+            )}
+          </View>
+          <Switch
+            value={item.enabled}
+            onValueChange={() => handleToggleAlarm(item)}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={item.enabled ? '#007AFF' : '#f4f3f4'}
+          />
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   const renderVolumeSlider = () => (
     <View style={styles.volumeContainer}>
@@ -283,6 +468,33 @@ export default function App() {
         maximumTrackTintColor="#555"
         thumbTintColor="#007AFF"
       />
+    </View>
+  );
+
+  const renderSoundPicker = () => (
+    <View style={styles.soundContainer}>
+      <Text style={styles.soundLabel}>サウンド</Text>
+      <View style={styles.soundOptions}>
+        {SOUND_OPTIONS.map((sound) => (
+          <TouchableOpacity
+            key={sound.id}
+            style={[
+              styles.soundOption,
+              selectedSound === sound.id && styles.soundOptionSelected,
+            ]}
+            onPress={() => setSelectedSound(sound.id)}
+          >
+            <Text
+              style={[
+                styles.soundOptionText,
+                selectedSound === sound.id && styles.soundOptionTextSelected,
+              ]}
+            >
+              {sound.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 
@@ -306,6 +518,7 @@ export default function App() {
               onChangeText={setAlarmLabel}
               placeholderTextColor="#999"
             />
+            {renderSoundPicker()}
             {renderVolumeSlider()}
           </>
         );
@@ -339,6 +552,7 @@ export default function App() {
               onChangeText={setAlarmLabel}
               placeholderTextColor="#999"
             />
+            {renderSoundPicker()}
             {renderVolumeSlider()}
           </>
         );
@@ -363,6 +577,7 @@ export default function App() {
               multiline
               numberOfLines={3}
             />
+            {renderSoundPicker()}
             {renderVolumeSlider()}
           </>
         );
@@ -370,9 +585,20 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container}>
+          <StatusBar style="light" />
+        <TouchableOpacity style={styles.weatherContainer} onPress={fetchWeather}>
+          <Text style={styles.weatherIcon}>{umbrellaInfo.icon}</Text>
+          <Text style={[
+            styles.weatherText,
+            umbrellaInfo.needsUmbrella && styles.weatherWarning
+          ]}>
+            {umbrellaInfo.message}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <Text style={styles.title}>アラーム</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleAddAlarm}>
@@ -424,7 +650,10 @@ export default function App() {
           visible={modalVisible}
           onRequestClose={() => setModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>
                 {editingAlarm ? 'アラームを編集' : '新しいアラーム'}
@@ -433,7 +662,10 @@ export default function App() {
                 {TABS.find((t) => t.key === activeTab)?.label}
               </Text>
 
-              <ScrollView style={styles.modalScrollView}>
+              <ScrollView
+                style={styles.modalScrollView}
+                keyboardShouldPersistTaps="handled"
+              >
                 {renderModalContent()}
               </ScrollView>
 
@@ -452,17 +684,61 @@ export default function App() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
-      </SafeAreaView>
-    </SafeAreaProvider>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  weatherContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 12,
+  },
+  weatherIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  weatherText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  weatherWarning: {
+    color: '#FF9500',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+  },
+  deleteButtonContent: {
+    width: 80,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
@@ -516,28 +792,40 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   alarmItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
+    backgroundColor: '#000',
   },
   alarmInfo: {
     flex: 1,
   },
   alarmTime: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: '200',
     color: '#fff',
   },
   alarmLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#999',
-    marginTop: 4,
+    marginTop: 2,
+  },
+  remainingTime: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginTop: 2,
+  },
+  quickRemainingTime: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: '#5AC8FA',
   },
   alarmTypeTag: {
     fontSize: 12,
@@ -625,6 +913,38 @@ const styles = StyleSheet.create({
   volumeSlider: {
     width: '100%',
     height: 40,
+  },
+  soundContainer: {
+    marginBottom: 20,
+  },
+  soundLabel: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  soundOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  soundOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#2c2c2e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3c3c3e',
+  },
+  soundOptionSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  soundOptionText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  soundOptionTextSelected: {
+    fontWeight: '600',
   },
   labelInput: {
     backgroundColor: '#2c2c2e',
