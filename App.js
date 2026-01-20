@@ -40,7 +40,7 @@ import {
   scheduleSnoozeAlarm,
   dismissAllNotifications,
 } from './src/utils/notifications';
-import { getWeatherData, getUmbrellaMessage } from './src/utils/weather';
+import { getWeatherData, needsUmbrella } from './src/utils/weather';
 
 const TABS = [
   { key: ALARM_TYPES.DAILY, label: '毎日' },
@@ -79,7 +79,7 @@ export default function App() {
   const [volume, setVolume] = useState(1.0);
   const [selectedSound, setSelectedSound] = useState('default');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [umbrellaInfo, setUmbrellaInfo] = useState({ message: '天気を取得中...', icon: '...' });
+  const [umbrella, setUmbrella] = useState(null); // true: 必要, false: 不要, null: 取得中
 
   useEffect(() => {
     loadAlarms();
@@ -195,9 +195,8 @@ export default function App() {
   };
 
   const fetchWeather = async () => {
-    const weatherData = await getWeatherData();
-    const info = getUmbrellaMessage(weatherData);
-    setUmbrellaInfo(info);
+    const data = await getWeatherData();
+    setUmbrella(needsUmbrella(data));
   };
 
   const filteredAlarms = alarms.filter((a) => a.type === activeTab);
@@ -589,13 +588,13 @@ export default function App() {
       <SafeAreaProvider>
         <SafeAreaView style={styles.container}>
           <StatusBar style="light" />
-        <TouchableOpacity style={styles.weatherContainer} onPress={fetchWeather}>
-          <Text style={styles.weatherIcon}>{umbrellaInfo.icon}</Text>
-          <Text style={[
-            styles.weatherText,
-            umbrellaInfo.needsUmbrella && styles.weatherWarning
-          ]}>
-            {umbrellaInfo.message}
+        <TouchableOpacity
+          style={[styles.umbrellaContainer, umbrella && styles.umbrellaNeeded]}
+          onPress={fetchWeather}
+        >
+          <Text style={styles.umbrellaIcon}>{umbrella === null ? '...' : umbrella ? '☔' : '☀️'}</Text>
+          <Text style={styles.umbrellaText}>
+            {umbrella === null ? '取得中' : umbrella ? '傘を持っていこう' : '傘は不要'}
           </Text>
         </TouchableOpacity>
 
@@ -700,27 +699,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  weatherContainer: {
+  umbrellaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     backgroundColor: '#1c1c1e',
     marginHorizontal: 20,
     marginTop: 10,
-    borderRadius: 12,
+    borderRadius: 16,
   },
-  weatherIcon: {
-    fontSize: 24,
-    marginRight: 10,
+  umbrellaNeeded: {
+    backgroundColor: '#3a2a00',
   },
-  weatherText: {
-    fontSize: 16,
+  umbrellaIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  umbrellaText: {
+    fontSize: 20,
     color: '#fff',
-  },
-  weatherWarning: {
-    color: '#FF9500',
     fontWeight: '600',
   },
   deleteButton: {
