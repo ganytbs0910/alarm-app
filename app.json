@@ -27,7 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4317478239934902~1648918071",
+          "iosAppId": "ca-app-pub-4317478239934902~1648918071"
+        }
+      ]
     ]
   }
 }

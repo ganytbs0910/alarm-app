@@ -41,6 +41,20 @@ import {
   dismissAllNotifications,
 } from './src/utils/notifications';
 import { getWeatherData, getWeatherStatus } from './src/utils/weather';
+import BannerAdComponent from './src/components/BannerAd';
+import Stopwatch from './src/components/Stopwatch';
+import SleepHistory from './src/components/SleepHistory';
+import { recordWakeTime } from './src/storage/sleepStorage';
+
+// メインタブ
+const MAIN_TABS = {
+  ALARM: 'alarm',
+  STOPWATCH: 'stopwatch',
+  SLEEP: 'sleep',
+};
+
+// 無料版のアラーム数制限
+const FREE_ALARM_LIMIT = 7;
 
 const TABS = [
   { key: ALARM_TYPES.DAILY, label: '毎日' },
@@ -68,6 +82,7 @@ const SOUND_OPTIONS = [
 ];
 
 export default function App() {
+  const [mainTab, setMainTab] = useState(MAIN_TABS.ALARM);
   const [alarms, setAlarms] = useState([]);
   const [activeTab, setActiveTab] = useState(ALARM_TYPES.DAILY);
   const [modalVisible, setModalVisible] = useState(false);
@@ -80,6 +95,8 @@ export default function App() {
   const [selectedSound, setSelectedSound] = useState('default');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weather, setWeather] = useState(null); // 'rain', 'cloudy', 'sunny', null: 取得中
+  const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     loadAlarms();
@@ -96,17 +113,22 @@ export default function App() {
     });
 
     // 通知ボタン押下時の処理
-    const responseSubscription = addNotificationResponseListener((response) => {
+    const responseSubscription = addNotificationResponseListener(async (response) => {
       const actionId = response.actionIdentifier;
       const data = response.notification.request.content.data;
 
       if (actionId === 'stop') {
-        // 停止ボタン - 何もしない（通知は自動で消える）
+        // 停止ボタン - 起床記録を追加
         console.log('Alarm stopped');
+        await recordWakeTime();
       } else if (actionId === 'snooze') {
         // スヌーズボタン - 5分後に再通知
         scheduleSnoozeAlarm(data);
         console.log('Snooze scheduled for 5 minutes');
+      } else {
+        // 通知をタップしてアプリを開いた場合も起床記録を追加
+        console.log('Alarm notification tapped');
+        await recordWakeTime();
       }
     });
 
@@ -202,6 +224,19 @@ export default function App() {
   const filteredAlarms = alarms.filter((a) => a.type === activeTab);
 
   const handleAddAlarm = () => {
+    // 無料版のアラーム数制限チェック
+    if (!isPremium && alarms.length >= FREE_ALARM_LIMIT) {
+      Alert.alert(
+        'アラーム数制限',
+        `無料版では${FREE_ALARM_LIMIT}個までです。\nプレミアムにアップグレードすると無制限に作成できます。`,
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: 'プレミアムを見る', onPress: () => setSubscriptionModalVisible(true) },
+        ]
+      );
+      return;
+    }
+
     setEditingAlarm(null);
     setSelectedTime(new Date());
     setAlarmLabel('');
@@ -588,21 +623,36 @@ export default function App() {
       <SafeAreaProvider>
         <SafeAreaView style={styles.container}>
           <StatusBar style="light" />
-        <TouchableOpacity
-          style={[styles.umbrellaContainer, weather === 'rain' && styles.umbrellaRain, weather === 'cloudy' && styles.umbrellaCloudy]}
-          onPress={fetchWeather}
-        >
-          <Text style={styles.umbrellaIcon}>
-            {weather === null ? '...' : weather === 'rain' ? '☔️' : weather === 'cloudy' ? '☁️' : '☀️'}
-          </Text>
-          <Text style={styles.umbrellaText}>
-            {weather === null ? '取得中' : weather === 'rain' ? '傘を持っていこう' : weather === 'cloudy' ? '傘があると安心' : '傘は不要'}
-          </Text>
-        </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>アラーム</Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddAlarm}>
+          {mainTab === MAIN_TABS.ALARM ? (
+            <>
+              <TouchableOpacity
+                style={[styles.umbrellaContainer, weather === 'rain' && styles.umbrellaRain, weather === 'cloudy' && styles.umbrellaCloudy]}
+                onPress={fetchWeather}
+              >
+                <Text style={styles.umbrellaIcon}>
+                  {weather === null ? '...' : weather === 'rain' ? '☔️' : weather === 'cloudy' ? '☁️' : '☀️'}
+                </Text>
+                <Text style={styles.umbrellaText}>
+                  {weather === null ? '取得中' : weather === 'rain' ? '傘を持っていこう' : weather === 'cloudy' ? '傘があると安心' : '傘は不要'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <TouchableOpacity
+                    style={styles.subscriptionButton}
+                    onPress={() => setSubscriptionModalVisible(true)}
+                  >
+                    {isPremium ? (
+                      <Text style={styles.premiumBadgeButton}>PRO</Text>
+                    ) : (
+                      <Text style={styles.subscriptionButtonText}>Premium</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.title}>アラーム</Text>
+                <TouchableOpacity style={styles.addButton} onPress={handleAddAlarm}>
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -623,10 +673,17 @@ export default function App() {
           ))}
         </View>
 
+        <BannerAdComponent isPremium={isPremium} />
+
         {filteredAlarms.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>アラームがありません</Text>
             <Text style={styles.emptySubtext}>+ボタンで追加してください</Text>
+            {!isPremium && (
+              <Text style={styles.alarmLimitText}>
+                無料版: {alarms.length}/{FREE_ALARM_LIMIT}個
+              </Text>
+            )}
             {activeTab === ALARM_TYPES.WAKEUP && (
               <TouchableOpacity
                 style={styles.testSpeechButton}
@@ -637,13 +694,74 @@ export default function App() {
             )}
           </View>
         ) : (
-          <FlatList
-            data={filteredAlarms}
-            renderItem={renderAlarm}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-          />
+          <>
+            <FlatList
+              data={filteredAlarms}
+              renderItem={renderAlarm}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+            />
+            {!isPremium && (
+              <View style={styles.alarmLimitContainer}>
+                <Text style={styles.alarmLimitText}>
+                  無料版: {alarms.length}/{FREE_ALARM_LIMIT}個
+                </Text>
+              </View>
+            )}
+          </>
         )}
+            </>
+          ) : mainTab === MAIN_TABS.STOPWATCH ? (
+            <Stopwatch />
+          ) : (
+            <SleepHistory />
+          )}
+
+          {/* 画面下部のタブバー */}
+          <View style={styles.bottomTabBar}>
+            <TouchableOpacity
+              style={styles.bottomTab}
+              onPress={() => setMainTab(MAIN_TABS.ALARM)}
+            >
+              <Text style={styles.bottomTabIcon}>⏰</Text>
+              <Text
+                style={[
+                  styles.bottomTabText,
+                  mainTab === MAIN_TABS.ALARM && styles.bottomTabTextActive,
+                ]}
+              >
+                アラーム
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bottomTab}
+              onPress={() => setMainTab(MAIN_TABS.STOPWATCH)}
+            >
+              <Text style={styles.bottomTabIcon}>⏱</Text>
+              <Text
+                style={[
+                  styles.bottomTabText,
+                  mainTab === MAIN_TABS.STOPWATCH && styles.bottomTabTextActive,
+                ]}
+              >
+                ストップウォッチ
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bottomTab}
+              onPress={() => setMainTab(MAIN_TABS.SLEEP)}
+            >
+              <Text style={styles.bottomTabIcon}>😴</Text>
+              <Text
+                style={[
+                  styles.bottomTabText,
+                  mainTab === MAIN_TABS.SLEEP && styles.bottomTabTextActive,
+                ]}
+              >
+                睡眠
+              </Text>
+            </TouchableOpacity>
+          </View>
 
         <Modal
           animationType="slide"
@@ -686,6 +804,96 @@ export default function App() {
               </View>
             </View>
           </KeyboardAvoidingView>
+        </Modal>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={subscriptionModalVisible}
+          onRequestClose={() => setSubscriptionModalVisible(false)}
+        >
+          <View style={styles.subscriptionOverlay}>
+            <View style={styles.subscriptionContent}>
+              <Text style={styles.subscriptionTitle}>
+                {isPremium ? '設定' : 'プレミアムにアップグレード'}
+              </Text>
+
+              {!isPremium ? (
+                <>
+                  <Text style={styles.subscriptionDescription}>
+                    プレミアム機能をアンロック
+                  </Text>
+
+                  <View style={styles.featureList}>
+                    <Text style={styles.featureItem}>✓ 広告なし</Text>
+                    <Text style={styles.featureItem}>✓ 無制限のアラーム</Text>
+                    <Text style={styles.featureItem}>✓ カスタムサウンド</Text>
+                    <Text style={styles.featureItem}>✓ 詳細な天気情報</Text>
+                  </View>
+
+                  <View style={styles.planContainer}>
+                    <TouchableOpacity
+                      style={styles.planOption}
+                      onPress={() => {
+                        // TODO: 実際の課金処理
+                        Alert.alert('月額プラン', '¥300/月\n（実装予定）');
+                      }}
+                    >
+                      <Text style={styles.planTitle}>月額プラン</Text>
+                      <Text style={styles.planPrice}>¥300/月</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.planOption, styles.planRecommended]}
+                      onPress={() => {
+                        // TODO: 実際の課金処理
+                        Alert.alert('年額プラン', '¥2,400/年（¥200/月相当）\n（実装予定）');
+                      }}
+                    >
+                      <Text style={styles.planBadge}>おすすめ</Text>
+                      <Text style={styles.planTitle}>年額プラン</Text>
+                      <Text style={styles.planPrice}>¥2,400/年</Text>
+                      <Text style={styles.planSaving}>2ヶ月分お得</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.restoreButton}
+                    onPress={() => {
+                      // TODO: 購入復元処理
+                      Alert.alert('復元', '購入の復元（実装予定）');
+                    }}
+                  >
+                    <Text style={styles.restoreButtonText}>購入を復元</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <View style={styles.premiumInfo}>
+                  <Text style={styles.premiumStatus}>プレミアム会員</Text>
+                  <Text style={styles.premiumDetail}>すべての機能が利用可能です</Text>
+                </View>
+              )}
+
+              {/* デバッグ用トグル（開発時のみ） */}
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={() => setIsPremium(!isPremium)}
+                >
+                  <Text style={styles.debugButtonText}>
+                    [DEV] プレミアム切替: {isPremium ? 'ON' : 'OFF'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.closeSubscriptionButton}
+                onPress={() => setSubscriptionModalVisible(false)}
+              >
+                <Text style={styles.closeSubscriptionButtonText}>閉じる</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -757,6 +965,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  headerLeft: {
+    width: 80,
+  },
+  subscriptionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#2c2c2e',
+  },
+  subscriptionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  premiumBadgeButton: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
   addButton: {
     width: 44,
     height: 44,
@@ -797,6 +1024,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 0,
+  },
+  alarmLimitContainer: {
+    padding: 10,
+    alignItems: 'center',
+  },
+  alarmLimitText: {
+    fontSize: 12,
+    color: '#666',
   },
   alarmItem: {
     flexDirection: 'row',
@@ -1029,5 +1264,154 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // サブスクリプションモーダル
+  subscriptionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  subscriptionContent: {
+    backgroundColor: '#1c1c1e',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  subscriptionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subscriptionDescription: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  featureList: {
+    marginBottom: 24,
+  },
+  featureItem: {
+    fontSize: 16,
+    color: '#fff',
+    paddingVertical: 8,
+    paddingLeft: 8,
+  },
+  planContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  planOption: {
+    flex: 1,
+    backgroundColor: '#2c2c2e',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#3c3c3e',
+  },
+  planRecommended: {
+    borderColor: '#FFD700',
+  },
+  planBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    backgroundColor: '#3a3a00',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  planTitle: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 4,
+  },
+  planPrice: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  planSaving: {
+    fontSize: 12,
+    color: '#4CD964',
+    marginTop: 4,
+  },
+  restoreButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  restoreButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  premiumInfo: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  premiumStatus: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  premiumDetail: {
+    fontSize: 14,
+    color: '#999',
+  },
+  debugButton: {
+    backgroundColor: '#333',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  debugButtonText: {
+    fontSize: 12,
+    color: '#FF9500',
+    textAlign: 'center',
+  },
+  closeSubscriptionButton: {
+    backgroundColor: '#2c2c2e',
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginTop: 16,
+  },
+  closeSubscriptionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  // 画面下部のタブバー
+  bottomTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#1c1c1e',
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    paddingBottom: 20,
+    paddingTop: 10,
+  },
+  bottomTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  bottomTabIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  bottomTabText: {
+    fontSize: 10,
+    color: '#666',
+  },
+  bottomTabTextActive: {
+    color: '#007AFF',
   },
 });
