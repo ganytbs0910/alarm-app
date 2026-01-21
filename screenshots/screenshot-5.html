@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Screenshot 5 - プレミアム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+    }
+
+    .screenshot {
+      width: 1290px;
+      height: 2796px;
+      background: linear-gradient(180deg, #f5af19 0%, #f12711 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 200px 80px 150px;
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 120px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 100px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .phone-frame {
+      width: 980px;
+      height: 1960px;
+      background: #000;
+      border-radius: 120px;
+      border: 16px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 60px 180px rgba(0,0,0,0.5);
+    }
+
+    .phone-notch {
+      width: 400px;
+      height: 100px;
+      background: #000;
+      border-radius: 0 0 50px 50px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 160px 60px;
+    }
+
+    .premium-badge {
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #000;
+      font-size: 48px;
+      font-weight: bold;
+      padding: 20px 60px;
+      border-radius: 60px;
+      margin-bottom: 80px;
+    }
+
+    .premium-title {
+      color: #fff;
+      font-size: 64px;
+      font-weight: 600;
+      margin-bottom: 60px;
+      text-align: center;
+    }
+
+    .feature-list {
+      width: 100%;
+      padding: 0 40px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      padding: 40px 0;
+      color: #fff;
+      font-size: 52px;
+      border-bottom: 1px solid #333;
+    }
+
+    .feature-icon {
+      width: 80px;
+      height: 80px;
+      background: #34C759;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 40px;
+      font-size: 40px;
+    }
+
+    .price-container {
+      margin-top: 80px;
+      width: 100%;
+      display: flex;
+      gap: 30px;
+    }
+
+    .price-card {
+      flex: 1;
+      background: #1c1c1e;
+      border-radius: 40px;
+      padding: 50px 30px;
+      text-align: center;
+      border: 3px solid #333;
+    }
+
+    .price-card.recommended {
+      border-color: #FFD700;
+      position: relative;
+    }
+
+    .price-card.recommended::before {
+      content: 'おすすめ';
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #FFD700;
+      color: #000;
+      font-size: 28px;
+      font-weight: bold;
+      padding: 8px 30px;
+      border-radius: 20px;
+    }
+
+    .price-label {
+      color: #999;
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    .price {
+      color: #fff;
+      font-size: 64px;
+      font-weight: bold;
+    }
+
+    .price-period {
+      color: #999;
+      font-size: 32px;
+    }
+
+    .price-saving {
+      color: #34C759;
+      font-size: 32px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="screenshot">
+    <div class="catchcopy">プレミアムで<br>もっと快適に</div>
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="premium-badge">PREMIUM</div>
+        <div class="premium-title">すべての機能をアンロック</div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            広告を完全に非表示
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            アラームを無制限に作成
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            カスタムサウンド
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            詳細な睡眠分析
+          </div>
+        </div>
+        <div class="price-container">
+          <div class="price-card">
+            <div class="price-label">月額プラン</div>
+            <div class="price">¥300</div>
+            <div class="price-period">/月</div>
+          </div>
+          <div class="price-card recommended">
+            <div class="price-label">年額プラン</div>
+            <div class="price">¥2,400</div>
+            <div class="price-period">/年</div>
+            <div class="price-saving">2ヶ月分お得</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPad App Store Screenshots</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #fff;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #FF9500;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    .instructions {
+      color: #999;
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+
+    .screenshots-container {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* iPad 13インチ用: 2048 x 2732 px（縮小表示） */
+    .screenshot {
+      width: 250px;
+      height: 333px;
+      border-radius: 20px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 15px 25px;
+      overflow: hidden;
+    }
+
+    /* 各スクリーンショットの背景グラデーション */
+    .screenshot-1 {
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+
+    .screenshot-2 {
+      background: linear-gradient(180deg, #1a3a5c 0%, #2d5a7b 50%, #1a3a5c 100%);
+    }
+
+    .screenshot-3 {
+      background: linear-gradient(180deg, #2d132c 0%, #801336 50%, #c72c41 100%);
+    }
+
+    .screenshot-4 {
+      background: linear-gradient(180deg, #0d7377 0%, #14a3a8 50%, #32e0c4 100%);
+    }
+
+    .screenshot-5 {
+      background: linear-gradient(180deg, #f5af19 0%, #f12711 100%);
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.4;
+      margin-bottom: 15px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .ipad-frame {
+      width: 200px;
+      height: 260px;
+      background: #000;
+      border-radius: 15px;
+      border: 3px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .ipad-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 15px 10px;
+    }
+
+    /* スクリーンショット1: 音声読み上げ */
+    .screen-1 .alarm-time {
+      font-size: 32px;
+      font-weight: 200;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .screen-1 .alarm-label {
+      font-size: 10px;
+      color: #FF9500;
+      background: rgba(255, 149, 0, 0.2);
+      padding: 3px 8px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .screen-1 .speech-bubble {
+      background: #1c1c1e;
+      border-radius: 10px;
+      padding: 10px;
+      max-width: 90%;
+    }
+
+    .screen-1 .speech-text {
+      color: #fff;
+      font-size: 9px;
+      line-height: 1.4;
+    }
+
+    .screen-1 .speech-icon {
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    /* スクリーンショット2: 天気 */
+    .screen-2 .weather-card {
+      background: #1a3a5c;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      width: 90%;
+    }
+
+    .screen-2 .weather-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+    }
+
+    .screen-2 .weather-text {
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* スクリーンショット3: 3種類のアラーム */
+    .screen-3 .tabs {
+      display: flex;
+      background: #1c1c1e;
+      border-radius: 6px;
+      padding: 3px;
+      margin-bottom: 12px;
+      width: 100%;
+    }
+
+    .screen-3 .tab {
+      flex: 1;
+      padding: 5px 0;
+      text-align: center;
+      color: #999;
+      font-size: 8px;
+      border-radius: 5px;
+    }
+
+    .screen-3 .tab.active {
+      background: #007AFF;
+      color: #fff;
+    }
+
+    .screen-3 .alarm-list {
+      width: 100%;
+    }
+
+    .screen-3 .alarm-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .screen-3 .alarm-item-time {
+      font-size: 18px;
+      font-weight: 200;
+      color: #fff;
+    }
+
+    .screen-3 .alarm-item-label {
+      font-size: 8px;
+      color: #999;
+    }
+
+    .screen-3 .toggle {
+      width: 28px;
+      height: 16px;
+      background: #007AFF;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .screen-3 .toggle::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+    }
+
+    /* スクリーンショット4: 睡眠グラフ */
+    .screen-4 .graph-container {
+      width: 100%;
+      padding: 8px;
+    }
+
+    .screen-4 .graph-title {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .screen-4 .graph {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 70px;
+      padding: 0 3px;
+    }
+
+    .screen-4 .bar {
+      width: 14px;
+      background: linear-gradient(180deg, #32e0c4 0%, #0d7377 100%);
+      border-radius: 3px 3px 0 0;
+    }
+
+    .screen-4 .bar-label {
+      color: #999;
+      font-size: 7px;
+      text-align: center;
+      margin-top: 3px;
+    }
+
+    .screen-4 .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 12px;
+    }
+
+    .screen-4 .stat {
+      text-align: center;
+    }
+
+    .screen-4 .stat-value {
+      color: #32e0c4;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .screen-4 .stat-label {
+      color: #999;
+      font-size: 7px;
+    }
+
+    /* スクリーンショット5: プレミアム */
+    .screen-5 .premium-badge {
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #000;
+      font-size: 9px;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    .screen-5 .feature-list {
+      width: 100%;
+    }
+
+    .screen-5 .feature-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 0;
+      color: #fff;
+      font-size: 10px;
+    }
+
+    .screen-5 .feature-icon {
+      margin-right: 8px;
+      font-size: 12px;
+    }
+
+    .screen-5 .price-tag {
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .screen-5 .price {
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .screen-5 .price-period {
+      color: rgba(255,255,255,0.8);
+      font-size: 9px;
+    }
+
+    .links {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .links p {
+      color: #999;
+      margin-bottom: 20px;
+    }
+
+    .links a {
+      color: #FF9500;
+      margin: 0 10px;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      color: #007AFF;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>iPad App Store Screenshots</h1>
+  <p class="subtitle">13インチ iPad（2048 x 2732 px）</p>
+  <p class="instructions">各スクリーンショットを個別表示して書き出してください</p>
+
+  <div class="screenshots-container">
+    <!-- スクリーンショット1: 音声読み上げ -->
+    <div class="screenshot screenshot-1">
+      <div class="catchcopy">起きる理由を<br>声で読み上げ</div>
+      <div class="ipad-frame">
+        <div class="ipad-screen screen-1">
+          <div class="alarm-time">07:00</div>
+          <div class="alarm-label">音声読み上げ</div>
+          <div class="speech-bubble">
+            <div class="speech-icon">🔊</div>
+            <div class="speech-text">「9時から大事な会議があります。」</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スクリーンショット2: 天気 -->
+    <div class="screenshot screenshot-2">
+      <div class="catchcopy">傘がいるか<br>一目で分かる</div>
+      <div class="ipad-frame">
+        <div class="ipad-screen screen-2">
+          <div class="weather-card">
+            <div class="weather-icon">☔️</div>
+            <div class="weather-text">傘を持っていこう</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スクリーンショット3: 3種類のアラーム -->
+    <div class="screenshot screenshot-3">
+      <div class="catchcopy">3種類の<br>アラームモード</div>
+      <div class="ipad-frame">
+        <div class="ipad-screen screen-3">
+          <div class="tabs">
+            <div class="tab active">毎日</div>
+            <div class="tab">今すぐ</div>
+            <div class="tab">起きるまで</div>
+          </div>
+          <div class="alarm-list">
+            <div class="alarm-item">
+              <div>
+                <div class="alarm-item-time">07:00</div>
+                <div class="alarm-item-label">平日</div>
+              </div>
+              <div class="toggle"></div>
+            </div>
+            <div class="alarm-item">
+              <div>
+                <div class="alarm-item-time">08:30</div>
+                <div class="alarm-item-label">週末</div>
+              </div>
+              <div class="toggle"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スクリーンショット4: 睡眠グラフ -->
+    <div class="screenshot screenshot-4">
+      <div class="catchcopy">睡眠パターンを<br>グラフで可視化</div>
+      <div class="ipad-frame">
+        <div class="ipad-screen screen-4">
+          <div class="graph-container">
+            <div class="graph-title">今週の起床時刻</div>
+            <div class="graph">
+              <div style="text-align:center"><div class="bar" style="height:40px"></div><div class="bar-label">月</div></div>
+              <div style="text-align:center"><div class="bar" style="height:35px"></div><div class="bar-label">火</div></div>
+              <div style="text-align:center"><div class="bar" style="height:45px"></div><div class="bar-label">水</div></div>
+              <div style="text-align:center"><div class="bar" style="height:30px"></div><div class="bar-label">木</div></div>
+              <div style="text-align:center"><div class="bar" style="height:50px"></div><div class="bar-label">金</div></div>
+              <div style="text-align:center"><div class="bar" style="height:60px"></div><div class="bar-label">土</div></div>
+              <div style="text-align:center"><div class="bar" style="height:55px"></div><div class="bar-label">日</div></div>
+            </div>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-value">7:12</div>
+                <div class="stat-label">平均</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">6:45</div>
+                <div class="stat-label">最早</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スクリーンショット5: プレミアム -->
+    <div class="screenshot screenshot-5">
+      <div class="catchcopy">プレミアムで<br>もっと快適に</div>
+      <div class="ipad-frame">
+        <div class="ipad-screen screen-5">
+          <div class="premium-badge">PREMIUM</div>
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              広告なし
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              無制限のアラーム
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              カスタムサウンド
+            </div>
+          </div>
+          <div class="price-tag">
+            <div class="price">¥300</div>
+            <div class="price-period">/月から</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="links">
+    <p>個別表示（実寸サイズで書き出し用）</p>
+    <a href="ipad-screenshot-1.html">1. 音声読み上げ</a>
+    <a href="ipad-screenshot-2.html">2. 天気</a>
+    <a href="ipad-screenshot-3.html">3. アラームモード</a>
+    <a href="ipad-screenshot-4.html">4. 睡眠グラフ</a>
+    <a href="ipad-screenshot-5.html">5. プレミアム</a>
+  </div>
+
+  <div class="back-link">
+    <a href="index.html">← iPhone版に戻る</a>
+  </div>
+</body>
+</html>

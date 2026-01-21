@@ -1,12 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
+import { Platform } from 'react-native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
+    priority: Notifications.AndroidNotificationPriority.MAX,
   }),
 });
 
@@ -31,15 +33,48 @@ export const setupNotificationCategories = async () => {
 };
 
 export const requestPermissions = async () => {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('Existing notification permission status:', existingStatus);
+    let finalStatus = existingStatus;
 
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowAnnouncements: true,
+          allowCriticalAlerts: true,
+        },
+      });
+      finalStatus = status;
+      console.log('Requested notification permission, new status:', finalStatus);
+    }
+
+    if (finalStatus !== 'granted') {
+      console.warn('Notification permissions not granted!');
+      return false;
+    }
+
+    // iOSの場合、通知チャネルの設定を確認
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('alarm', {
+        name: 'アラーム通知',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+      });
+      console.log('Android notification channel created');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error requesting notification permissions:', error);
+    return false;
   }
-
-  return finalStatus === 'granted';
 };
 
 // バイブレーションパターン（アラーム用）
@@ -55,120 +90,166 @@ export const vibrateLight = async () => {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 };
 
-// 利用可能なサウンドID（ランダム選択用）
-const AVAILABLE_SOUNDS = ['default', 'alarm', 'bell', 'chime', 'digital', 'gentle'];
+// 利用可能なカスタムサウンド
+const CUSTOM_SOUNDS = ['alarm', 'bell', 'chime', 'digital', 'gentle'];
 
-// サウンド名からファイル名を取得
-const getSoundFile = (soundId) => {
-  // ランダムが選択された場合、ランダムにサウンドを選択
-  if (soundId === 'random') {
-    const randomIndex = Math.floor(Math.random() * AVAILABLE_SOUNDS.length);
-    const selectedSound = AVAILABLE_SOUNDS[randomIndex];
-    console.log('Random sound selected:', selectedSound);
-    return selectedSound;
+// サウンド設定を取得
+const getSoundSetting = (soundId) => {
+  // デフォルトの場合はシステムサウンドを使用
+  if (!soundId || soundId === 'default') {
+    return true;
   }
-  // カスタムサウンドファイルがある場合はここで対応
-  // 現在はすべてデフォルトサウンドを使用
-  return 'default';
+
+  // ランダムの場合はカスタムサウンドからランダムに選択
+  if (soundId === 'random') {
+    const randomIndex = Math.floor(Math.random() * CUSTOM_SOUNDS.length);
+    const selectedSound = CUSTOM_SOUNDS[randomIndex];
+    console.log('Random sound selected:', selectedSound);
+    return `${selectedSound}.wav`;
+  }
+
+  // カスタムサウンドの場合はファイル名を返す
+  if (CUSTOM_SOUNDS.includes(soundId)) {
+    return `${soundId}.wav`;
+  }
+
+  // 不明なサウンドIDの場合はデフォルトを使用
+  return true;
 };
 
 // 毎日アラーム
 export const scheduleDailyAlarm = async (alarm) => {
   const { hour, minute, id, label, sound } = alarm;
 
-  const trigger = {
-    type: 'daily',
-    hour: hour,
-    minute: minute,
-  };
+  try {
+    const trigger = {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: hour,
+      minute: minute,
+    };
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '毎日アラーム',
-      body: label || '起きる時間です！',
-      sound: getSoundFile(sound),
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      vibrate: [0, 250, 250, 250, 250, 250],
-      data: { type: 'daily', id, hour, minute, label, sound },
-      categoryIdentifier: 'alarm',
-    },
-    trigger,
-    identifier: id,
-  });
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ 毎日アラーム',
+        body: label || '起きる時間です！',
+        sound: getSoundSetting(sound),
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 250, 250, 250, 250, 250],
+        data: { type: 'daily', id, hour, minute, label, sound },
+        categoryIdentifier: 'alarm',
+        ...(Platform.OS === 'android' && { channelId: 'alarm' }),
+      },
+      trigger,
+      identifier: id,
+    });
+    console.log('Daily alarm scheduled:', notificationId, 'at', hour, ':', minute);
+    return notificationId;
+  } catch (error) {
+    console.error('Error scheduling daily alarm:', error);
+    throw error;
+  }
 };
 
 // 今すぐアラーム
 export const scheduleQuickAlarm = async (alarm) => {
   const { seconds, id, label, sound } = alarm;
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '今すぐアラーム',
-      body: label || 'タイマー終了！',
-      sound: getSoundFile(sound),
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      vibrate: [0, 250, 250, 250, 250, 250],
-      data: { type: 'quick', id, seconds, label, sound },
-      categoryIdentifier: 'alarm',
-    },
-    trigger: {
-      type: 'timeInterval',
-      seconds: seconds,
-      repeats: false,
-    },
-    identifier: id,
-  });
+  try {
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ 今すぐアラーム',
+        body: label || 'タイマー終了！',
+        sound: getSoundSetting(sound),
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 250, 250, 250, 250, 250],
+        data: { type: 'quick', id, seconds, label, sound },
+        categoryIdentifier: 'alarm',
+        ...(Platform.OS === 'android' && { channelId: 'alarm' }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: seconds,
+        repeats: false,
+      },
+      identifier: id,
+    });
+    console.log('Quick alarm scheduled:', notificationId, 'in', seconds, 'seconds');
+    return notificationId;
+  } catch (error) {
+    console.error('Error scheduling quick alarm:', error);
+    throw error;
+  }
 };
 
 // 起きるまでアラーム
 export const scheduleWakeUpAlarm = async (alarm) => {
   const { hour, minute, id, reason, sound } = alarm;
 
-  const trigger = {
-    type: 'calendar',
-    hour: hour,
-    minute: minute,
-    repeats: false,
-  };
+  try {
+    // 次の発火時刻を計算
+    const now = new Date();
+    const targetDate = new Date();
+    targetDate.setHours(hour, minute, 0, 0);
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '起きるまでアラーム',
-      body: reason || '起きる時間です！',
-      sound: getSoundFile(sound),
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      vibrate: [0, 250, 250, 250, 250, 250],
-      data: { type: 'wakeup', id, reason, speakText: true, hour, minute, sound },
-      categoryIdentifier: 'alarm',
-    },
-    trigger,
-    identifier: id,
-  });
+    // 既に過ぎている場合は翌日に設定
+    if (targetDate <= now) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ 起きるまでアラーム',
+        body: reason || '起きる時間です！',
+        sound: getSoundSetting(sound),
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 250, 250, 250, 250, 250],
+        data: { type: 'wakeup', id, reason, speakText: true, hour, minute, sound },
+        categoryIdentifier: 'alarm',
+        ...(Platform.OS === 'android' && { channelId: 'alarm' }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: targetDate,
+      },
+      identifier: id,
+    });
+    console.log('WakeUp alarm scheduled:', notificationId, 'at', targetDate);
+    return notificationId;
+  } catch (error) {
+    console.error('Error scheduling wakeup alarm:', error);
+    throw error;
+  }
 };
 
 // スヌーズアラーム（5分後）
 export const scheduleSnoozeAlarm = async (originalData) => {
   const snoozeId = `snooze_${Date.now()}`;
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'スヌーズ',
-      body: originalData.label || originalData.reason || '起きる時間です！',
-      sound: getSoundFile(originalData.sound),
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      vibrate: [0, 250, 250, 250, 250, 250],
-      data: { ...originalData, isSnooze: true },
-      categoryIdentifier: 'alarm',
-    },
-    trigger: {
-      type: 'timeInterval',
-      seconds: 300, // 5分
-      repeats: false,
-    },
-    identifier: snoozeId,
-  });
-
-  return snoozeId;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ スヌーズ',
+        body: originalData.label || originalData.reason || '起きる時間です！',
+        sound: getSoundSetting(originalData.sound),
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 250, 250, 250, 250, 250],
+        data: { ...originalData, isSnooze: true },
+        categoryIdentifier: 'alarm',
+        ...(Platform.OS === 'android' && { channelId: 'alarm' }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 300, // 5分
+        repeats: false,
+      },
+      identifier: snoozeId,
+    });
+    console.log('Snooze alarm scheduled:', snoozeId);
+    return snoozeId;
+  } catch (error) {
+    console.error('Error scheduling snooze alarm:', error);
+    throw error;
+  }
 };
 
 // 音声読み上げ（expo-speech使用）

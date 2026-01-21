@@ -20,6 +20,7 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import {
   getAlarms,
   addAlarm,
@@ -45,6 +46,18 @@ import BannerAdComponent from './src/components/BannerAd';
 import Stopwatch from './src/components/Stopwatch';
 import SleepHistory from './src/components/SleepHistory';
 import { recordWakeTime } from './src/storage/sleepStorage';
+import {
+  connectToIAP,
+  disconnectFromIAP,
+  getProducts,
+  purchaseProduct,
+  restorePurchases,
+  validateSubscription,
+} from './src/services/iapService';
+import {
+  PRODUCT_IDS,
+  getSubscription,
+} from './src/storage/subscriptionStorage';
 
 // メインタブ
 const MAIN_TABS = {
@@ -72,8 +85,8 @@ const QUICK_TIME_OPTIONS = [
 ];
 
 const SOUND_OPTIONS = [
+  { id: 'random', label: 'ランダム', recommended: true },
   { id: 'default', label: 'デフォルト' },
-  { id: 'random', label: 'ランダム' },
   { id: 'alarm', label: 'アラーム' },
   { id: 'bell', label: 'ベル' },
   { id: 'chime', label: 'チャイム' },
@@ -94,15 +107,53 @@ export default function App() {
   const [volume, setVolume] = useState(1.0);
   const [selectedSound, setSelectedSound] = useState('default');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [weather, setWeather] = useState(null); // 'rain', 'cloudy', 'sunny', null: 取得中
+  const [weather, setWeather] = useState(null); // { status: 'rain'|'cloudy'|'sunny', probability: number } or null
   const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [subscriptionDetails, setSubscriptionDetails] = useState(null);
+
+  // タイムアウト付きPromise
+  const withTimeout = (promise, ms) => {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), ms)
+    );
+    return Promise.race([promise, timeout]);
+  };
+
+  // IAPとサブスクリプションの初期化
+  const initializeSubscription = async () => {
+    try {
+      // IAP接続（5秒タイムアウト）
+      await withTimeout(connectToIAP(), 5000).catch(e => {
+        console.log('IAP connection skipped:', e.message);
+      });
+
+      // 商品情報を取得（3秒タイムアウト）
+      const productList = await withTimeout(getProducts(), 3000).catch(e => {
+        console.log('Get products skipped:', e.message);
+        return [];
+      });
+      setProducts(productList);
+
+      // サブスクリプション状態を確認
+      const { isValid, subscription } = await validateSubscription();
+      setIsPremium(isValid);
+      setSubscriptionDetails(subscription);
+    } catch (error) {
+      console.error('Error initializing subscription:', error);
+      // エラーが起きても続行
+    }
+  };
 
   useEffect(() => {
-    loadAlarms();
-    requestPermissions();
-    setupNotificationCategories();
-    fetchWeather();
+    // 各初期化処理を安全に実行
+    loadAlarms().catch(e => console.log('Load alarms error:', e));
+    requestPermissions().catch(e => console.log('Request permissions error:', e));
+    setupNotificationCategories().catch(e => console.log('Setup categories error:', e));
+    fetchWeather().catch(e => console.log('Fetch weather error:', e));
+    initializeSubscription();
 
     // 通知受信時の処理
     const notificationSubscription = addNotificationListener((notification) => {
@@ -135,8 +186,57 @@ export default function App() {
     return () => {
       notificationSubscription.remove();
       responseSubscription.remove();
+      disconnectFromIAP();
     };
   }, []);
+
+  // 購入処理
+  const handlePurchase = async (productId) => {
+    setPurchaseLoading(true);
+    try {
+      const result = await purchaseProduct(productId);
+      if (result.success) {
+        setIsPremium(true);
+        setSubscriptionDetails(result.subscription);
+        Alert.alert(
+          '購入完了',
+          'プレミアム会員になりました！\nすべての機能をお楽しみください。'
+        );
+        setSubscriptionModalVisible(false);
+      } else if (result.error === 'canceled') {
+        // キャンセルは何もしない
+      } else {
+        Alert.alert('購入エラー', result.error || '購入処理に失敗しました');
+      }
+    } catch (error) {
+      Alert.alert('エラー', '購入処理中にエラーが発生しました');
+    } finally {
+      setPurchaseLoading(false);
+    }
+  };
+
+  // 購入復元処理
+  const handleRestore = async () => {
+    setPurchaseLoading(true);
+    try {
+      const result = await restorePurchases();
+      if (result.success) {
+        if (result.restored) {
+          setIsPremium(true);
+          setSubscriptionDetails(result.subscription);
+          Alert.alert('復元完了', 'プレミアム会員の購入を復元しました！');
+        } else {
+          Alert.alert('復元', '復元可能な購入が見つかりませんでした');
+        }
+      } else {
+        Alert.alert('復元エラー', result.error || '復元処理に失敗しました');
+      }
+    } catch (error) {
+      Alert.alert('エラー', '復元処理中にエラーが発生しました');
+    } finally {
+      setPurchaseLoading(false);
+    }
+  };
 
   // 今すぐアラームがあれば1秒ごと、なければ1分ごとに更新
   useEffect(() => {
@@ -218,7 +318,14 @@ export default function App() {
 
   const fetchWeather = async () => {
     const data = await getWeatherData();
-    setWeather(getWeatherStatus(data));
+    if (data) {
+      setWeather({
+        status: getWeatherStatus(data),
+        probability: data.probability,
+      });
+    } else {
+      setWeather(null);
+    }
   };
 
   const filteredAlarms = alarms.filter((a) => a.type === activeTab);
@@ -515,9 +622,13 @@ export default function App() {
             style={[
               styles.soundOption,
               selectedSound === sound.id && styles.soundOptionSelected,
+              sound.recommended && styles.soundOptionRecommended,
             ]}
             onPress={() => setSelectedSound(sound.id)}
           >
+            {sound.recommended && (
+              <Text style={styles.recommendedBadge}>おすすめ</Text>
+            )}
             <Text
               style={[
                 styles.soundOptionText,
@@ -621,20 +732,35 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
           <StatusBar style="light" />
 
           {mainTab === MAIN_TABS.ALARM ? (
             <>
               <TouchableOpacity
-                style={[styles.umbrellaContainer, weather === 'rain' && styles.umbrellaRain, weather === 'cloudy' && styles.umbrellaCloudy]}
+                style={[styles.umbrellaContainer, weather?.status === 'rain' && styles.umbrellaRain, weather?.status === 'cloudy' && styles.umbrellaCloudy]}
                 onPress={fetchWeather}
               >
                 <Text style={styles.umbrellaIcon}>
-                  {weather === null ? '...' : weather === 'rain' ? '☔️' : weather === 'cloudy' ? '☁️' : '☀️'}
+                  {weather === null ? '...' : weather.status === 'rain' ? '☔️' : weather.status === 'cloudy' ? '☁️' : '☀️'}
                 </Text>
                 <Text style={styles.umbrellaText}>
-                  {weather === null ? '取得中' : weather === 'rain' ? '傘を持っていこう' : weather === 'cloudy' ? '傘があると安心' : '傘は不要'}
+                  {weather === null
+                    ? '取得中'
+                    : weather.status === 'rain'
+                    ? `雨 ${weather.probability}%`
+                    : weather.status === 'cloudy'
+                    ? `曇り ${weather.probability}%`
+                    : `晴れ ${100 - weather.probability}%`}
+                </Text>
+                <Text style={styles.umbrellaAdvice}>
+                  {weather === null
+                    ? ''
+                    : weather.status === 'rain'
+                    ? '傘を持っていこう'
+                    : weather.status === 'cloudy'
+                    ? '傘があると安心'
+                    : '傘は不要'}
                 </Text>
               </TouchableOpacity>
 
@@ -673,8 +799,6 @@ export default function App() {
           ))}
         </View>
 
-        <BannerAdComponent isPremium={isPremium} />
-
         {filteredAlarms.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>アラームがありません</Text>
@@ -683,14 +807,6 @@ export default function App() {
               <Text style={styles.alarmLimitText}>
                 無料版: {alarms.length}/{FREE_ALARM_LIMIT}個
               </Text>
-            )}
-            {activeTab === ALARM_TYPES.WAKEUP && (
-              <TouchableOpacity
-                style={styles.testSpeechButton}
-                onPress={() => speakText('おはようございます。起きる時間です。')}
-              >
-                <Text style={styles.testSpeechButtonText}>音声テスト</Text>
-              </TouchableOpacity>
             )}
           </View>
         ) : (
@@ -723,7 +839,11 @@ export default function App() {
               style={styles.bottomTab}
               onPress={() => setMainTab(MAIN_TABS.ALARM)}
             >
-              <Text style={styles.bottomTabIcon}>⏰</Text>
+              <Ionicons
+                name="alarm-outline"
+                size={22}
+                color={mainTab === MAIN_TABS.ALARM ? '#007AFF' : '#666'}
+              />
               <Text
                 style={[
                   styles.bottomTabText,
@@ -737,7 +857,11 @@ export default function App() {
               style={styles.bottomTab}
               onPress={() => setMainTab(MAIN_TABS.STOPWATCH)}
             >
-              <Text style={styles.bottomTabIcon}>⏱</Text>
+              <Ionicons
+                name="stopwatch-outline"
+                size={22}
+                color={mainTab === MAIN_TABS.STOPWATCH ? '#007AFF' : '#666'}
+              />
               <Text
                 style={[
                   styles.bottomTabText,
@@ -751,7 +875,11 @@ export default function App() {
               style={styles.bottomTab}
               onPress={() => setMainTab(MAIN_TABS.SLEEP)}
             >
-              <Text style={styles.bottomTabIcon}>😴</Text>
+              <Ionicons
+                name="moon-outline"
+                size={22}
+                color={mainTab === MAIN_TABS.SLEEP ? '#007AFF' : '#666'}
+              />
               <Text
                 style={[
                   styles.bottomTabText,
@@ -762,6 +890,9 @@ export default function App() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* バナー広告（一番下） */}
+          <BannerAdComponent isPremium={isPremium} />
 
         <Modal
           animationType="slide"
@@ -810,45 +941,53 @@ export default function App() {
           animationType="slide"
           transparent={true}
           visible={subscriptionModalVisible}
-          onRequestClose={() => setSubscriptionModalVisible(false)}
+          onRequestClose={() => !purchaseLoading && setSubscriptionModalVisible(false)}
         >
           <View style={styles.subscriptionOverlay}>
             <View style={styles.subscriptionContent}>
               <Text style={styles.subscriptionTitle}>
-                {isPremium ? '設定' : 'プレミアムにアップグレード'}
+                {isPremium ? 'プレミアム会員' : 'プレミアムにアップグレード'}
               </Text>
 
               {!isPremium ? (
                 <>
                   <Text style={styles.subscriptionDescription}>
-                    プレミアム機能をアンロック
+                    すべての機能をアンロック
                   </Text>
 
                   <View style={styles.featureList}>
-                    <Text style={styles.featureItem}>✓ 広告なし</Text>
-                    <Text style={styles.featureItem}>✓ 無制限のアラーム</Text>
-                    <Text style={styles.featureItem}>✓ カスタムサウンド</Text>
-                    <Text style={styles.featureItem}>✓ 詳細な天気情報</Text>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="close-circle" size={20} color="#666" />
+                      <Text style={styles.featureItem}>広告なし</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="infinite" size={20} color="#666" />
+                      <Text style={styles.featureItem}>無制限のアラーム</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="musical-notes" size={20} color="#666" />
+                      <Text style={styles.featureItem}>カスタムサウンド</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="stats-chart" size={20} color="#666" />
+                      <Text style={styles.featureItem}>詳細な睡眠分析</Text>
+                    </View>
                   </View>
 
                   <View style={styles.planContainer}>
                     <TouchableOpacity
-                      style={styles.planOption}
-                      onPress={() => {
-                        // TODO: 実際の課金処理
-                        Alert.alert('月額プラン', '¥300/月\n（実装予定）');
-                      }}
+                      style={[styles.planOption, purchaseLoading && styles.planDisabled]}
+                      onPress={() => handlePurchase(PRODUCT_IDS.MONTHLY)}
+                      disabled={purchaseLoading}
                     >
                       <Text style={styles.planTitle}>月額プラン</Text>
                       <Text style={styles.planPrice}>¥300/月</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.planOption, styles.planRecommended]}
-                      onPress={() => {
-                        // TODO: 実際の課金処理
-                        Alert.alert('年額プラン', '¥2,400/年（¥200/月相当）\n（実装予定）');
-                      }}
+                      style={[styles.planOption, styles.planRecommended, purchaseLoading && styles.planDisabled]}
+                      onPress={() => handlePurchase(PRODUCT_IDS.YEARLY)}
+                      disabled={purchaseLoading}
                     >
                       <Text style={styles.planBadge}>おすすめ</Text>
                       <Text style={styles.planTitle}>年額プラン</Text>
@@ -857,38 +996,61 @@ export default function App() {
                     </TouchableOpacity>
                   </View>
 
+                  {purchaseLoading && (
+                    <Text style={styles.loadingText}>処理中...</Text>
+                  )}
+
                   <TouchableOpacity
-                    style={styles.restoreButton}
-                    onPress={() => {
-                      // TODO: 購入復元処理
-                      Alert.alert('復元', '購入の復元（実装予定）');
-                    }}
+                    style={[styles.restoreButton, purchaseLoading && styles.buttonDisabled]}
+                    onPress={handleRestore}
+                    disabled={purchaseLoading}
                   >
                     <Text style={styles.restoreButtonText}>購入を復元</Text>
                   </TouchableOpacity>
+
+                  <Text style={styles.termsText}>
+                    購入すると利用規約に同意したことになります。{'\n'}
+                    サブスクリプションは期間終了の24時間前までに{'\n'}
+                    キャンセルしない限り自動更新されます。
+                  </Text>
                 </>
               ) : (
                 <View style={styles.premiumInfo}>
+                  <Ionicons name="checkmark-circle" size={48} color="#34C759" />
                   <Text style={styles.premiumStatus}>プレミアム会員</Text>
                   <Text style={styles.premiumDetail}>すべての機能が利用可能です</Text>
+
+                  {subscriptionDetails?.expirationDate && (
+                    <Text style={styles.expirationText}>
+                      有効期限: {new Date(subscriptionDetails.expirationDate).toLocaleDateString('ja-JP')}
+                    </Text>
+                  )}
+
+                  <View style={styles.premiumFeatures}>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="checkmark" size={18} color="#34C759" />
+                      <Text style={styles.premiumFeatureItem}>広告なし</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="checkmark" size={18} color="#34C759" />
+                      <Text style={styles.premiumFeatureItem}>無制限のアラーム</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="checkmark" size={18} color="#34C759" />
+                      <Text style={styles.premiumFeatureItem}>カスタムサウンド</Text>
+                    </View>
+                    <View style={styles.featureRow}>
+                      <Ionicons name="checkmark" size={18} color="#34C759" />
+                      <Text style={styles.premiumFeatureItem}>詳細な睡眠分析</Text>
+                    </View>
+                  </View>
                 </View>
               )}
 
-              {/* デバッグ用トグル（開発時のみ） */}
-              {__DEV__ && (
-                <TouchableOpacity
-                  style={styles.debugButton}
-                  onPress={() => setIsPremium(!isPremium)}
-                >
-                  <Text style={styles.debugButtonText}>
-                    [DEV] プレミアム切替: {isPremium ? 'ON' : 'OFF'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
               <TouchableOpacity
-                style={styles.closeSubscriptionButton}
+                style={[styles.closeSubscriptionButton, purchaseLoading && styles.buttonDisabled]}
                 onPress={() => setSubscriptionModalVisible(false)}
+                disabled={purchaseLoading}
               >
                 <Text style={styles.closeSubscriptionButtonText}>閉じる</Text>
               </TouchableOpacity>
@@ -909,7 +1071,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  umbrellaContainer: {
+    umbrellaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -934,6 +1096,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#fff',
     fontWeight: '600',
+  },
+  umbrellaAdvice: {
+    fontSize: 14,
+    color: '#aaa',
+    marginLeft: 12,
   },
   deleteButton: {
     backgroundColor: '#FF3B30',
@@ -1096,18 +1263,6 @@ const styles = StyleSheet.create({
     color: '#444',
     marginTop: 8,
   },
-  testSpeechButton: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#FF9500',
-    borderRadius: 10,
-  },
-  testSpeechButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1173,10 +1328,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#3c3c3e',
+    alignItems: 'center',
   },
   soundOptionSelected: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
+  },
+  soundOptionRecommended: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+  },
+  recommendedBadge: {
+    fontSize: 9,
+    color: '#FFD700',
+    fontWeight: 'bold',
+    marginBottom: 2,
   },
   soundOptionText: {
     color: '#fff',
@@ -1295,11 +1461,15 @@ const styles = StyleSheet.create({
   featureList: {
     marginBottom: 24,
   },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 10,
+  },
   featureItem: {
     fontSize: 16,
     color: '#fff',
-    paddingVertical: 8,
-    paddingLeft: 8,
   },
   planContainer: {
     flexDirection: 'row',
@@ -1317,6 +1487,9 @@ const styles = StyleSheet.create({
   },
   planRecommended: {
     borderColor: '#FFD700',
+  },
+  planDisabled: {
+    opacity: 0.5,
   },
   planBadge: {
     fontSize: 10,
@@ -1352,30 +1525,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
   },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  termsText: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 12,
+  },
   premiumInfo: {
     alignItems: 'center',
     paddingVertical: 20,
   },
   premiumStatus: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 8,
+    color: '#fff',
+    marginTop: 12,
+    marginBottom: 4,
   },
   premiumDetail: {
     fontSize: 14,
     color: '#999',
+    marginBottom: 8,
   },
-  debugButton: {
-    backgroundColor: '#333',
-    padding: 12,
-    borderRadius: 8,
+  expirationText: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+  },
+  premiumFeatures: {
     marginTop: 16,
+    width: '100%',
   },
-  debugButtonText: {
-    fontSize: 12,
-    color: '#FF9500',
-    textAlign: 'center',
+  premiumFeatureItem: {
+    fontSize: 15,
+    color: '#fff',
   },
   closeSubscriptionButton: {
     backgroundColor: '#2c2c2e',
@@ -1395,21 +1588,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c1e',
     borderTopWidth: 1,
     borderTopColor: '#333',
-    paddingBottom: 20,
-    paddingTop: 10,
+    paddingTop: 6,
+    paddingBottom: 30,
   },
   bottomTab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
-  },
-  bottomTabIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    paddingVertical: 4,
   },
   bottomTabText: {
     fontSize: 10,
     color: '#666',
+    marginTop: 2,
   },
   bottomTabTextActive: {
     color: '#007AFF',

@@ -22,7 +22,10 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "Bash(kill:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

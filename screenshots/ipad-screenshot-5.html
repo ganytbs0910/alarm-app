@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>iPad Screenshot 5 - プレミアム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+    }
+
+    .screenshot {
+      width: 2048px;
+      height: 2732px;
+      background: linear-gradient(180deg, #f5af19 0%, #f12711 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 150px 100px 100px;
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 140px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 80px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .ipad-frame {
+      width: 1600px;
+      height: 2100px;
+      background: #000;
+      border-radius: 60px;
+      border: 16px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 60px 180px rgba(0,0,0,0.5);
+    }
+
+    .ipad-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 80px;
+    }
+
+    .premium-badge {
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #000;
+      font-size: 48px;
+      font-weight: bold;
+      padding: 20px 60px;
+      border-radius: 50px;
+      margin-bottom: 80px;
+    }
+
+    .feature-list {
+      width: 70%;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      padding: 40px 0;
+      color: #fff;
+      font-size: 56px;
+      border-bottom: 1px solid #333;
+    }
+
+    .feature-icon {
+      margin-right: 40px;
+      font-size: 60px;
+      color: #34C759;
+    }
+
+    .price-tag {
+      background: rgba(255,255,255,0.1);
+      border-radius: 40px;
+      padding: 60px 100px;
+      margin-top: 80px;
+      text-align: center;
+    }
+
+    .price {
+      color: #fff;
+      font-size: 100px;
+      font-weight: bold;
+    }
+
+    .price-period {
+      color: rgba(255,255,255,0.8);
+      font-size: 48px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="screenshot">
+    <div class="catchcopy">プレミアムで<br>もっと快適に</div>
+    <div class="ipad-frame">
+      <div class="ipad-screen">
+        <div class="premium-badge">PREMIUM</div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            広告なし
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            無制限のアラーム
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            カスタムサウンド
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✓</span>
+            詳細な睡眠分析
+          </div>
+        </div>
+        <div class="price-tag">
+          <div class="price">¥300</div>
+          <div class="price-period">/月から</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

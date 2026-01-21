@@ -1,17 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 
-// 本番環境でのみ広告ライブラリをインポート
-let BannerAd, BannerAdSize, TestIds;
-if (!__DEV__) {
-  try {
-    const ads = require('react-native-google-mobile-ads');
-    BannerAd = ads.BannerAd;
-    BannerAdSize = ads.BannerAdSize;
-    TestIds = ads.TestIds;
-  } catch (e) {
-    console.log('AdMob library not available:', e);
-  }
+// 広告ライブラリをインポート
+let BannerAd, BannerAdSize;
+try {
+  const ads = require('react-native-google-mobile-ads');
+  BannerAd = ads.BannerAd;
+  BannerAdSize = ads.BannerAdSize;
+} catch (e) {
+  console.log('AdMob library not available:', e);
 }
 
 // 広告ユニットID
@@ -23,16 +20,12 @@ const BannerAdComponent = ({ isPremium }) => {
     return null;
   }
 
-  // 開発環境ではモック広告を表示
-  if (__DEV__ || !BannerAd) {
-    return (
-      <View style={styles.mockBanner}>
-        <Text style={styles.mockText}>広告バナー (開発モード)</Text>
-      </View>
-    );
+  // 広告ライブラリが利用できない場合は何も表示しない
+  if (!BannerAd) {
+    return null;
   }
 
-  // 本番環境では実際のAdMob広告を表示
+  // AdMob広告を表示
   return (
     <View style={styles.bannerContainer}>
       <BannerAd
@@ -55,20 +48,8 @@ const BannerAdComponent = ({ isPremium }) => {
 const styles = StyleSheet.create({
   bannerContainer: {
     alignItems: 'center',
-    marginVertical: 10,
-  },
-  mockBanner: {
-    height: 50,
-    backgroundColor: '#2c2c2e',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginVertical: 10,
-    borderRadius: 8,
-  },
-  mockText: {
-    color: '#666',
-    fontSize: 12,
+    backgroundColor: '#1c1c1e',
+    paddingVertical: 4,
   },
 });
 

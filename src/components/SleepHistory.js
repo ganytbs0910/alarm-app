@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import {
   getSleepRecords,
@@ -81,7 +82,7 @@ const SleepHistory = ({ onWakeRecord }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       {/* おやすみボタン */}
       <TouchableOpacity
         style={[
@@ -134,14 +135,15 @@ const SleepHistory = ({ onWakeRecord }) => {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={records}
-          renderItem={renderRecord}
-          keyExtractor={(item) => item.id}
-          style={styles.list}
-        />
+        records.map((item) => (
+          <View key={item.id}>
+            {renderRecord({ item })}
+          </View>
+        ))
       )}
-    </View>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 };
 
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyContainer: {
-    flex: 1,
+    paddingVertical: 60,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,

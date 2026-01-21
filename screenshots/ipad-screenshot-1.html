@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>iPad Screenshot 1 - 音声読み上げ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+    }
+
+    .screenshot {
+      width: 2048px;
+      height: 2732px;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 150px 100px 100px;
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 140px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 80px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .ipad-frame {
+      width: 1600px;
+      height: 2100px;
+      background: #000;
+      border-radius: 60px;
+      border: 16px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 60px 180px rgba(0,0,0,0.5);
+    }
+
+    .ipad-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 80px;
+    }
+
+    .alarm-time {
+      font-size: 280px;
+      font-weight: 200;
+      color: #fff;
+      margin-bottom: 50px;
+    }
+
+    .alarm-label {
+      font-size: 72px;
+      color: #FF9500;
+      background: rgba(255, 149, 0, 0.2);
+      padding: 24px 64px;
+      border-radius: 50px;
+      margin-bottom: 100px;
+    }
+
+    .speech-bubble {
+      background: #1c1c1e;
+      border-radius: 80px;
+      padding: 80px;
+      max-width: 90%;
+    }
+
+    .speech-icon {
+      font-size: 140px;
+      margin-bottom: 50px;
+      text-align: center;
+    }
+
+    .speech-text {
+      color: #fff;
+      font-size: 68px;
+      line-height: 1.6;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="screenshot">
+    <div class="catchcopy">起きる理由を<br>声で読み上げ</div>
+    <div class="ipad-frame">
+      <div class="ipad-screen">
+        <div class="alarm-time">07:00</div>
+        <div class="alarm-label">音声読み上げ</div>
+        <div class="speech-bubble">
+          <div class="speech-icon">🔊</div>
+          <div class="speech-text">「9時から大事な会議があります。<br>遅刻できません。」</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

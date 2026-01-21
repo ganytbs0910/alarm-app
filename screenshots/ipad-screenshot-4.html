@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>iPad Screenshot 4 - 睡眠グラフ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+    }
+
+    .screenshot {
+      width: 2048px;
+      height: 2732px;
+      background: linear-gradient(180deg, #0d7377 0%, #14a3a8 50%, #32e0c4 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 150px 100px 100px;
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 140px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 80px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .ipad-frame {
+      width: 1600px;
+      height: 2100px;
+      background: #000;
+      border-radius: 60px;
+      border: 16px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 60px 180px rgba(0,0,0,0.5);
+    }
+
+    .ipad-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 80px;
+    }
+
+    .graph-container {
+      width: 90%;
+      padding: 60px;
+    }
+
+    .graph-title {
+      color: #fff;
+      font-size: 64px;
+      font-weight: 600;
+      margin-bottom: 60px;
+      text-align: center;
+    }
+
+    .graph {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 500px;
+      padding: 0 20px;
+      margin-bottom: 60px;
+    }
+
+    .bar-container {
+      text-align: center;
+    }
+
+    .bar {
+      width: 80px;
+      background: linear-gradient(180deg, #32e0c4 0%, #0d7377 100%);
+      border-radius: 20px 20px 0 0;
+      margin: 0 auto;
+    }
+
+    .bar-label {
+      color: #999;
+      font-size: 36px;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 80px;
+      width: 100%;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      color: #32e0c4;
+      font-size: 80px;
+      font-weight: 600;
+    }
+
+    .stat-label {
+      color: #999;
+      font-size: 36px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="screenshot">
+    <div class="catchcopy">睡眠パターンを<br>グラフで可視化</div>
+    <div class="ipad-frame">
+      <div class="ipad-screen">
+        <div class="graph-container">
+          <div class="graph-title">今週の起床時刻</div>
+          <div class="graph">
+            <div class="bar-container"><div class="bar" style="height:280px"></div><div class="bar-label">月</div></div>
+            <div class="bar-container"><div class="bar" style="height:260px"></div><div class="bar-label">火</div></div>
+            <div class="bar-container"><div class="bar" style="height:300px"></div><div class="bar-label">水</div></div>
+            <div class="bar-container"><div class="bar" style="height:240px"></div><div class="bar-label">木</div></div>
+            <div class="bar-container"><div class="bar" style="height:320px"></div><div class="bar-label">金</div></div>
+            <div class="bar-container"><div class="bar" style="height:400px"></div><div class="bar-label">土</div></div>
+            <div class="bar-container"><div class="bar" style="height:380px"></div><div class="bar-label">日</div></div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value">7:12</div>
+              <div class="stat-label">平均起床</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">6:45</div>
+              <div class="stat-label">最早起床</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">8:30</div>
+              <div class="stat-label">最遅起床</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

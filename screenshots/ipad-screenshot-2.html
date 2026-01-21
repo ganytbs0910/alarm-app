@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>iPad Screenshot 2 - 天気</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #1a1a1a;
+    }
+
+    .screenshot {
+      width: 2048px;
+      height: 2732px;
+      background: linear-gradient(180deg, #1a3a5c 0%, #2d5a7b 50%, #1a3a5c 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 150px 100px 100px;
+    }
+
+    .catchcopy {
+      color: #fff;
+      font-size: 140px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 80px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .ipad-frame {
+      width: 1600px;
+      height: 2100px;
+      background: #000;
+      border-radius: 60px;
+      border: 16px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 60px 180px rgba(0,0,0,0.5);
+    }
+
+    .ipad-screen {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 80px;
+    }
+
+    .weather-card {
+      background: #1a3a5c;
+      border-radius: 60px;
+      padding: 100px;
+      text-align: center;
+      width: 80%;
+    }
+
+    .weather-icon {
+      font-size: 250px;
+      margin-bottom: 60px;
+    }
+
+    .weather-text {
+      color: #fff;
+      font-size: 80px;
+      font-weight: 600;
+      margin-bottom: 30px;
+    }
+
+    .weather-detail {
+      color: #aaa;
+      font-size: 48px;
+    }
+  </style>
+</head>
+<body>
+  <div class="screenshot">
+    <div class="catchcopy">傘がいるか<br>一目で分かる</div>
+    <div class="ipad-frame">
+      <div class="ipad-screen">
+        <div class="weather-card">
+          <div class="weather-icon">☔️</div>
+          <div class="weather-text">傘を持っていこう</div>
+          <div class="weather-detail">降水確率 80%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

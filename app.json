@@ -14,20 +14,36 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gan-0910.alarm"
+      "bundleIdentifier": "com.gan-0910.alarm",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.gan0910.alarm"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/alarm.wav",
+            "./assets/sounds/bell.wav",
+            "./assets/sounds/chime.wav",
+            "./assets/sounds/digital.wav",
+            "./assets/sounds/gentle.wav"
+          ]
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {
